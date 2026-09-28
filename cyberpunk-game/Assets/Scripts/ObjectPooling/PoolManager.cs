@@ -1,0 +1,65 @@
+using System;
+using UnityEngine;
+
+public class PoolManager : MonoBehaviour
+{
+    public static PoolManager Instance { get; private set; }
+
+    [SerializeField] private Pool[] pools;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+
+            foreach (Pool pool in pools)
+            {
+                GameObject newContainer = new GameObject($"{pool.id}Container");
+                newContainer.transform.parent = transform;
+                pool.container = newContainer.transform;
+
+                for (int i = 0; i < pool.amount; i++)
+                {
+                    GameObject newPrefab = Instantiate(pool.prefab, newContainer.transform);
+                    newPrefab.SetActive(false);
+                    pool.pooledObjects.Add(newPrefab);
+                }
+            }
+        }
+    }
+
+    public GameObject Instantiate(string id, Vector2 spawnPosition, Quaternion rotation = new Quaternion(), Transform parent = null)
+    {
+        Pool pool = Array.Find(pools, pool => pool.id == id);
+        GameObject randomPrefab;
+
+        if (pool.pooledObjects.Count > 0)
+        {
+            randomPrefab = pool.pooledObjects[0];
+            randomPrefab.transform.position = spawnPosition;
+            randomPrefab.transform.SetParent(parent == null ? pool.container : parent);
+
+            pool.pooledObjects.RemoveAt(pool.pooledObjects.IndexOf(randomPrefab));
+            randomPrefab.transform.rotation = rotation;
+            randomPrefab.SetActive(true);
+        }
+        else
+        {
+            randomPrefab = Instantiate(pool.prefab, spawnPosition, rotation == new Quaternion() ? Quaternion.identity : rotation, parent == null ? pool.container : parent);
+        }
+
+        return randomPrefab;
+    }
+
+    public void AddToPool(string id, GameObject prefab)
+    {
+        Pool pool = Array.Find(pools, pool => pool.id == id);
+
+        pool.pooledObjects.Add(prefab);
+    }
+}
